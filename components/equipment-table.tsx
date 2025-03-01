@@ -33,26 +33,6 @@ export function EquipmentTable({
 	onRowClick,
 	selectedId,
 }: EquipmentTableProps) {
-	// const [visibleColumns, setVisibleColumns] = useState<string[]>([
-	// 	"description",
-	// 	"brand",
-	// 	"tag",
-	// 	"model",
-	// 	"serialId",
-	// 	"range",
-	// 	"toleranceLimit",
-	// 	"inUse",
-	// 	"calibrationInterval",
-	// 	"lastCalibration",
-	// 	"calibrationDue",
-	// 	"remainingMonths",
-	// 	"calibrationType",
-	// 	"reportNumber",
-	// 	"calibrator",
-	// 	"pic",
-	// 	"actions",
-	// ]);
-
 	const visibleColumns = [
 		"description",
 		"brand",
@@ -117,7 +97,7 @@ export function EquipmentTable({
 							{visibleColumns.includes("serialId") && (
 								<TableHead>Serial ID/No</TableHead>
 							)}
-							{visibleColumns.includes("range") && <TableHead>Range</TableHead>}
+							{/* {visibleColumns.includes("range") && <TableHead>Range</TableHead>} */}
 							{visibleColumns.includes("toleranceLimit") && (
 								<TableHead>Tolerance Limit</TableHead>
 							)}
@@ -139,13 +119,13 @@ export function EquipmentTable({
 							{visibleColumns.includes("calibrationType") && (
 								<TableHead>Calibration Type</TableHead>
 							)}
-							{visibleColumns.includes("reportNumber") && (
+							{/* {visibleColumns.includes("reportNumber") && (
 								<TableHead>Report Number</TableHead>
 							)}
 							{visibleColumns.includes("calibrator") && (
 								<TableHead>Calibrator</TableHead>
-							)}
-							{visibleColumns.includes("pic") && <TableHead>PIC</TableHead>}
+							)} */}
+							{/* {visibleColumns.includes("pic") && <TableHead>PIC</TableHead>} */}
 							{visibleColumns.includes("actions") && (
 								<TableHead className="w-[80px]">Actions</TableHead>
 							)}
@@ -193,9 +173,9 @@ export function EquipmentTable({
 									{visibleColumns.includes("serialId") && (
 										<TableCell>{equipment.serialId}</TableCell>
 									)}
-									{visibleColumns.includes("range") && (
+									{/* {visibleColumns.includes("range") && (
 										<TableCell>{equipment.range}</TableCell>
-									)}
+									)} */}
 									{visibleColumns.includes("toleranceLimit") && (
 										<TableCell>{equipment.toleranceLimit}</TableCell>
 									)}
@@ -207,9 +187,7 @@ export function EquipmentTable({
 										</TableCell>
 									)}
 									{visibleColumns.includes("calibrationInterval") && (
-										<TableCell>
-											{equipment.calibrationInterval} months
-										</TableCell>
+										<TableCell>{equipment.calibrationInterval} years</TableCell>
 									)}
 									{visibleColumns.includes("lastCalibration") && (
 										<TableCell>
@@ -233,7 +211,7 @@ export function EquipmentTable({
 											</Badge>
 										</TableCell>
 									)}
-									{visibleColumns.includes("reportNumber") && (
+									{/* {visibleColumns.includes("reportNumber") && (
 										<TableCell>{equipment.reportNumber}</TableCell>
 									)}
 									{visibleColumns.includes("calibrator") && (
@@ -241,7 +219,7 @@ export function EquipmentTable({
 									)}
 									{visibleColumns.includes("pic") && (
 										<TableCell>{equipment.pic}</TableCell>
-									)}
+									)} */}
 									{visibleColumns.includes("actions") && (
 										<TableCell>
 											<DropdownMenu>
