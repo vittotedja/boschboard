@@ -28,48 +28,6 @@ import {Badge} from "@/components/ui/badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import TimeSeriesChart from "@/components/chart"; // Adjust the path if needed
 
-import dynamic from "next/dynamic";
-import type {Data} from "plotly.js";
-const Plot = dynamic(
-	() => import("react-plotly.js").then((mod) => mod.default),
-	{
-		ssr: false,
-	}
-);
-
-// In your BayesianNoDriftSimulation component, add this new function before the return statement
-const getCandlestickData = (data: MeasurementRecord[]): Data[] => {
-	return [
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			open: data.map((d) => d.measuredX),
-			high: data.map((d) => d.postMean + 2 * d.postStd),
-			low: data.map((d) => d.postMean - 2 * d.postStd),
-			close: data.map((d) => d.measuredX),
-			type: "candlestick" as const,
-			increasing: {line: {color: "#22c55e"}},
-			decreasing: {line: {color: "#ef4444"}},
-			name: "Measurement Range",
-		},
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			y: data.map((d) => d.measuredX),
-			type: "scatter" as const,
-			mode: "lines",
-			line: {color: "#4f46e5"},
-			name: "Measured Value",
-		},
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			y: data.map((d) => d.postMean),
-			type: "scatter" as const,
-			mode: "lines",
-			line: {color: "#22c55e"},
-			name: "Posterior Mean",
-		},
-	];
-};
-
 /* ------------------------------------------------------------------
  * 1) Helper Functions
  * ------------------------------------------------------------------ */
@@ -301,7 +259,7 @@ export default function BayesianNoDriftSimulation() {
 	 * ------------------------------- */
 	const toggleSimulation = () => {
 		setSettings((prev) => ({...prev, isRunning: !prev.isRunning}));
-		setsimulateLiveData(true)
+		setsimulateLiveData(true);
 	};
 
 	const resetSimulation = () => {
@@ -311,7 +269,7 @@ export default function BayesianNoDriftSimulation() {
 		}
 		setSettings((prev) => ({...prev, isRunning: false}));
 		setData([]);
-		setsimulateLiveData(false)
+		setsimulateLiveData(false);
 	};
 
 	/* -------------------------------
@@ -674,69 +632,69 @@ export default function BayesianNoDriftSimulation() {
 
 			{/* Time Series Chart */}
 			{/* Time Series Chart */}
-<Card className="mb-6">
-  <CardHeader>
-    <CardTitle>Measurements Over Time</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" />
-          <YAxis domain={[150, 200]} /> {/* Set the Y-Axis range from 150 to 200 */}
-          <Tooltip />
-          {/* Measured Value */}
-          <Line
-            type="monotone"
-            dataKey="measured"
-            stroke="#4f46e5"
-            name="Measured (X)"
-            dot={{ r: 2 }}
-            activeDot={{ r: 6 }}
-          />
-          {/* Posterior Mean */}
-          <Line
-            type="monotone"
-            dataKey="postMean"
-            stroke="#22c55e"
-            name="Posterior Mean"
-            dot={{ r: 2 }}
-            activeDot={{ r: 6 }}
-          />
-          {/* Reference lines for Spec Limits */}
-          <ReferenceLine
-            y={settings.specLower}
-            stroke="#dc2626"
-            strokeDasharray="3 3"
-            label="Spec Lower"
-          />
-          <ReferenceLine
-            y={settings.specUpper}
-            stroke="#dc2626"
-            strokeDasharray="3 3"
-            label="Spec Upper"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-    <div className="flex flex-wrap gap-2 mt-4 text-sm">
-      <div className="flex items-center gap-1">
-        <div className="w-3 h-3 rounded-full bg-indigo-500" />
-        <span>Measured Value</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <div className="w-3 h-3 rounded-full bg-green-500" />
-        <span>Posterior Mean</span>
-      </div>
-      <div className="flex items-center gap-1 text-red-500">
-        <AlertTriangle className="h-4 w-4" />
-        <span>Spec Limits</span>
-      </div>
-    </div>
-  </CardContent>
-</Card>
-
+			<Card className="mb-6">
+				<CardHeader>
+					<CardTitle>Measurements Over Time</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="h-64">
+						<ResponsiveContainer width="100%" height="100%">
+							<LineChart data={chartData}>
+								<CartesianGrid strokeDasharray="3 3" />
+								<XAxis dataKey="time" />
+								<YAxis domain={[150, 200]} />{" "}
+								{/* Set the Y-Axis range from 150 to 200 */}
+								<Tooltip />
+								{/* Measured Value */}
+								<Line
+									type="monotone"
+									dataKey="measured"
+									stroke="#4f46e5"
+									name="Measured (X)"
+									dot={{r: 2}}
+									activeDot={{r: 6}}
+								/>
+								{/* Posterior Mean */}
+								<Line
+									type="monotone"
+									dataKey="postMean"
+									stroke="#22c55e"
+									name="Posterior Mean"
+									dot={{r: 2}}
+									activeDot={{r: 6}}
+								/>
+								{/* Reference lines for Spec Limits */}
+								<ReferenceLine
+									y={settings.specLower}
+									stroke="#dc2626"
+									strokeDasharray="3 3"
+									label="Spec Lower"
+								/>
+								<ReferenceLine
+									y={settings.specUpper}
+									stroke="#dc2626"
+									strokeDasharray="3 3"
+									label="Spec Upper"
+								/>
+							</LineChart>
+						</ResponsiveContainer>
+					</div>
+					<div className="flex flex-wrap gap-2 mt-4 text-sm">
+						<div className="flex items-center gap-1">
+							<div className="w-3 h-3 rounded-full bg-indigo-500" />
+							<span>Measured Value</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<div className="w-3 h-3 rounded-full bg-green-500" />
+							<span>Posterior Mean</span>
+						</div>
+						<div className="flex items-center gap-1 text-red-500">
+							<AlertTriangle className="h-4 w-4" />
+							<span>Spec Limits</span>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			<Card className="mb-6">
 				<CardHeader>

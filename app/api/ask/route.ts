@@ -3,8 +3,7 @@ import {createClient} from "@supabase/supabase-js";
 import OpenAI from "openai";
 import {zodResponseFormat} from "openai/helpers/zod";
 import {z} from "zod";
-import type {NextApiRequest, NextApiResponse} from "next";
-import { NextRequest, NextResponse } from "next/server";
+import {NextRequest, NextResponse} from "next/server";
 
 // Zod schema for structured output
 const ContextSchema = z.object({
@@ -36,10 +35,7 @@ const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(
-	req: NextRequest,
-) {
-
+export async function POST(req: NextRequest) {
 	try {
 		const body = req.json();
 		const {question} = await body;
@@ -132,38 +128,44 @@ export async function POST(
 			],
 		});
 
-		return NextResponse.json({
-			answer: response.choices[0].message.content,
-			context: validatedContext,
-			data: data,
-		},{ status:200});
+		return NextResponse.json(
+			{
+				answer: response.choices[0].message.content,
+				context: validatedContext,
+				data: data,
+			},
+			{status: 200}
+		);
 	} catch (error) {
 		console.error("RAG Error:", error);
-		return NextResponse.json({
-			error: "Failed to process question",
-			details: error instanceof Error ? error.message : "Unknown error",
-		},{status:500}
-	
-	);
+		return NextResponse.json(
+			{
+				error: "Failed to process question",
+				details: error instanceof Error ? error.message : "Unknown error",
+			},
+			{status: 500}
+		);
 	}
 }
 
 // Query Handlers
-async function handleCalibrationSchedule(context: z.infer<typeof ContextSchema>) {
-  const query = supabase
-	.from('calibration_records')
-	.select('*, tools!inner(*)')
-	.order('last_calibration_date', { ascending: false });
-  
-  if (context.tools?.length) {
-	const { data: tools } = await supabase
-	  .from('tools')
-	  .select('Serial_or_Id_no')
-	  .in('Serial_or_Id_no', context.tools);
-	query.in('Serial_or_Id_no', tools?.map(t => t.Serial_or_Id_no) || []);
-  }
-  const { data } = await query;
-  return { calibrations: data };
+async function handleCalibrationSchedule(
+	context: z.infer<typeof ContextSchema>
+) {
+	const query = supabase
+		.from("calibration_records")
+		.select("*, tools!inner(*)")
+		.order("last_calibration_date", {ascending: false});
+
+	if (context.tools?.length) {
+		const {data: tools} = await supabase
+			.from("tools")
+			.select("Serial_or_Id_no")
+			.in("Serial_or_Id_no", context.tools);
+		query.in("Serial_or_Id_no", tools?.map((t) => t.Serial_or_Id_no) || []);
+	}
+	const {data} = await query;
+	return {calibrations: data};
 }
 
 async function handleMeasurementAccuracy(
