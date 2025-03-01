@@ -18,6 +18,9 @@ module.exports = {
 		},
 		extend: {
 			colors: {
+				'dark-blue': '#122A47', //sky950
+				'light-blue': '#A1D9F1', //sky-200
+				'red': '#CE332D', //red-600
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
@@ -34,6 +37,14 @@ module.exports = {
 				destructive: {
 					DEFAULT: "hsl(var(--destructive))",
 					foreground: "hsl(var(--destructive-foreground))",
+				},
+				warning: {
+					DEFAULT: "hsl(38, 92%, 50%)",
+					foreground: "hsl(var(--destructive-foreground))",
+				},
+				success: {
+					DEFAULT: "hsl(142, 76%, 36%)",
+					foreground: "hsl(var(--background))",
 				},
 				muted: {
 					DEFAULT: "hsl(var(--muted))",
@@ -70,6 +81,7 @@ module.exports = {
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
+				'expand-left-to-right': 'expand-left-to-right 0.5s ease',
 			},
 		},
 	},
