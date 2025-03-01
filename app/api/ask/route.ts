@@ -46,7 +46,7 @@ export async function POST(
 
 		// Step 1: Structured analysis with OpenAI
 		const analysis = await openai.chat.completions.create({
-			model: "gpt-4o-mini",
+			model: "gpt-4o",
 			messages: [
 				{
 					role: "system",
@@ -111,7 +111,7 @@ export async function POST(
 
 		// Step 3: Generate response
 		const response = await openai.chat.completions.create({
-			model: "gpt-4o-mini",
+			model: "gpt-4o",
 			messages: [
 				{
 					role: "system",
@@ -149,24 +149,21 @@ export async function POST(
 }
 
 // Query Handlers
-async function handleCalibrationSchedule(
-	context: z.infer<typeof ContextSchema>
-) {
-	const query = supabase
-		.from("calibration_records")
-		.select("*, tools!inner(*)")
-		.order("last_calibration_date", {ascending: false});
-
-	if (context.tools) {
-		const {data: tools} = await supabase
-			.from("tools")
-			.select("Serial_or_id_no")
-			.in("Description", context.tools);
-		query.in("Serial_or_id_no", tools?.map((t) => t.Serial_or_id_no) || []);
-	}
-
-	const {data} = await query;
-	return {calibrations: data};
+async function handleCalibrationSchedule(context: z.infer<typeof ContextSchema>) {
+  const query = supabase
+	.from('calibration_records')
+	.select('*, tools!inner(*)')
+	.order('last_calibration_date', { ascending: false });
+  
+  if (context.tools?.length) {
+	const { data: tools } = await supabase
+	  .from('tools')
+	  .select('Serial_or_Id_no')
+	  .in('Serial_or_Id_no', context.tools);
+	query.in('Serial_or_Id_no', tools?.map(t => t.Serial_or_Id_no) || []);
+  }
+  const { data } = await query;
+  return { calibrations: data };
 }
 
 async function handleMeasurementAccuracy(
