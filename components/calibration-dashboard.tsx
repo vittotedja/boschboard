@@ -1,6 +1,6 @@
 "use client";
 
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {Search} from "lucide-react";
 import {Input} from "@/components/ui/input";
 import {CalibrationTimeline} from "@/components/calibration-timeline";
@@ -14,6 +14,10 @@ export function CalibrationDashboard() {
 		null
 	);
 
+	useEffect(() => {
+		setSelectedEquipment(equipmentData[0]);
+	}, []);
+
 	const filteredEquipment = equipmentData.filter((item) => {
 		const searchLower = searchQuery.toLowerCase();
 		return (
@@ -26,15 +30,6 @@ export function CalibrationDashboard() {
 
 	return (
 		<div className="container mx-auto py-6 space-y-8">
-			<div className="flex flex-col space-y-2">
-				<h1 className="text-2xl font-bold tracking-tight">
-					Calibration Equipment Dashboard
-				</h1>
-				<p className="text-muted-foreground">
-					Track and manage calibration schedules for all measuring equipment
-				</p>
-			</div>
-
 			<div className="relative">
 				<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 				<Input

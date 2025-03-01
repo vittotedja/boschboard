@@ -6,12 +6,15 @@ function monthsBetween(date1: Date, date2: Date): number {
 	const months =
 		(date2.getFullYear() - date1.getFullYear()) * 12 +
 		(date2.getMonth() - date1.getMonth());
+
+	console.log(months);
 	return months;
 }
 
 function getNextDate(lastDate: string, intervalYears: number) {
 	const nextDate = new Date(lastDate);
 	nextDate.setFullYear(nextDate.getFullYear() + intervalYears);
+
 	return nextDate.toISOString().split("T")[0]; // Format as YYYY-MM-DD
 }
 
