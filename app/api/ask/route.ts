@@ -48,12 +48,12 @@ export async function POST(req: NextRequest) {
 					role: "system",
 					content: `Analyze calibration/measurement questions using these database tables:
         - measurement_records: prod_id, tool_id, measurement_mm, timestamp
-        - calibration_records: Serial_or_id_no, last_calibration_date, Calibration_error
+        - calibration_records: Serial_or_Id_no, last_calibration_date, Calibration_error
         - products: serial_id, tolerance_limit_mm
-        - tools: Serial_or_id_no, Model_or_Part_No
+        - tools: Serial_or_Id_no, Model_or_Part_No
         
         Extract:
-        1. Tools (match Serial_or_id_no or Description)
+        1. Tools (match Serial_or_Id_no or Description)
         2. Products (match serial_id or description)
         3. Date ranges (convert relative dates to absolute)
         4. Error thresholds (compare to Calibration_error or tolerance_limit_mm)
@@ -74,12 +74,12 @@ export async function POST(req: NextRequest) {
 			],
 			response_format: zodResponseFormat(ContextSchema, "context"),
 		});
-
 		const content = analysis.choices[0].message.content;
 		if (!content) {
 			throw new Error("Invalid response from OpenAI");
 		}
 		const context = JSON.parse(content);
+		console.log(context)
 		const validatedContext = ContextSchema.parse(context);
 
 		// Step 2: Dynamic data retrieval
@@ -179,9 +179,9 @@ async function handleMeasurementAccuracy(
 	if (context.tools) {
 		const {data: tools} = await supabase
 			.from("tools")
-			.select("Serial_or_id_no")
+			.select("Serial_or_Id_no")
 			.in("Description", context.tools);
-		query.in("tool_id", tools?.map((t) => t.Serial_or_id_no) || []);
+		query.in("tool_id", tools?.map((t) => t.Serial_or_Id_no) || []);
 	}
 
 	if (context.products) {
@@ -237,7 +237,7 @@ async function handlePredictiveAnalysis(
 		.order("last_calibration_date", {ascending: true});
 
 	if (context.tools) {
-		query.in("Serial_or_id_no", context.tools);
+		query.in("Serial_or_Id_no", context.tools);
 	}
 
 	const {data} = await query;
@@ -251,7 +251,7 @@ async function handleToolPerformance(context: z.infer<typeof ContextSchema>) {
 		.order("Calibrator", {ascending: true});
 
 	if (context.tools) {
-		query.in("Serial_or_id_no", context.tools);
+		query.in("Serial_or_Id_no", context.tools);
 	}
 
 	if (context.date_range) {
@@ -284,7 +284,7 @@ async function handleGenericQuery(context: z.infer<typeof ContextSchema>) {
 	};
 
 	if (context.tools) {
-		queries.tools = queries.tools.in("Serial_or_id_no", context.tools);
+		queries.tools = queries.tools.in("Serial_or_Id_no", context.tools);
 	}
 
 	if (context.products) {
