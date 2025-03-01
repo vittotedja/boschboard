@@ -93,7 +93,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   simulateLiveData = false,
 }) => {
   // Default grouping is "1h"
-  const [timeframe, setTimeframe] = useState<Timeframe>("1h");
+  const [timeframe, setTimeframe] = useState<Timeframe>("1d");
   const [data, setData] = useState<DataItem[]>([]);
   const [showBollingerBands, setShowBollingerBands] = useState<boolean>(false);
   const [showThreshold, setShowThreshold] = useState<boolean>(false);
@@ -125,7 +125,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         tool_desc: "Simulated Data",
         tool_id: "sim",
         timestamp: new Date(),
-        measurement_mm: 180 + Math.random() * (200 - 180), // value between 180 and 200
+        measurement_mm: 185 + Math.random() * (5), // value between 180 and 200
         time: new Date(),
       };
       setData((prevData) => [...prevData, newTick]);
@@ -142,7 +142,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   // In live simulation, if fewer than 50 aggregated candles exist,
   // the zoom range will cover all aggregated data.
   useEffect(() => {
-    const getXRange = () => {
+    const getXRange = (): [string, string] | undefined => {
       if (aggregatedData.length >= 50) {
         return [
           aggregatedData[aggregatedData.length - 50].time,
@@ -156,6 +156,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       }
       return undefined;
     };
+    
     setZoomRange(getXRange());
   }, [aggregatedData]);
 
@@ -170,9 +171,10 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
   // Remove gaps from the x-axis for a continuous view.
   const rangebreaks = [
-    { pattern: "day of week", bounds: [6, 1] },
-    { pattern: "hour", bounds: [17, 9] },
+    { pattern: "hour", bounds: [0, 2] }, // Hide data between midnight and 9 AM
+    { pattern: "hour", bounds: [17, 24] }, // Hide data between 5 PM and midnight
   ];
+  
 
   return (
     <div className="mb-6">
@@ -196,7 +198,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           </button>
         </div>
         <div className="flex gap-2">
-          {["1h", "1d", "1M"].map((tf) => (
+          {["1d", "1M"].map((tf) => (
             <button
               key={tf}
               onClick={() => setTimeframe(tf as Timeframe)}
@@ -221,12 +223,12 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
               close: aggregatedData.map((d) => d.close),
               type: "candlestick",
               increasing: {
-                line: { color: "rgb(239, 68, 68)" },
-                fillcolor: "rgb(239, 68, 68)",
-              },
-              decreasing: {
                 line: { color: "rgb(37, 99, 235)" },
                 fillcolor: "rgb(37, 99, 235)",
+              },
+              decreasing: {
+                line: { color: "rgb(239, 68, 68)" },
+                fillcolor: "rgb(239, 68, 68)",
               },
             },
             // Optionally add Bollinger Bands.
@@ -278,8 +280,10 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
               type: "date",
               range: zoomRange, // Use the calculated zoom range
               rangeslider: { visible: false },
-              rangebreaks: rangebreaks,
-              tickfont: { size: 10 },
+              rangebreaks: timeframe === "1h" ? [] : [  // Modified line
+                { pattern: "hour", bounds: [0, 2] },
+                { pattern: "hour", bounds: [3, 24] }
+              ],              
             },
             yaxis: { title: "Measurement (mm)" },
             shapes: [
