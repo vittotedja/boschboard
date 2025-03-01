@@ -27,6 +27,48 @@ import {Play, Pause, RefreshCw, AlertTriangle} from "lucide-react";
 import {Badge} from "@/components/ui/badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 
+import dynamic from "next/dynamic";
+import type {Data} from "plotly.js";
+const Plot = dynamic(
+	() => import("react-plotly.js").then((mod) => mod.default),
+	{
+		ssr: false,
+	}
+);
+
+// In your BayesianNoDriftSimulation component, add this new function before the return statement
+const getCandlestickData = (data: MeasurementRecord[]): Data[] => {
+	return [
+		{
+			x: data.map((d) => formatTime(d.timestamp)),
+			open: data.map((d) => d.measuredX),
+			high: data.map((d) => d.postMean + 2 * d.postStd),
+			low: data.map((d) => d.postMean - 2 * d.postStd),
+			close: data.map((d) => d.measuredX),
+			type: "candlestick" as const,
+			increasing: {line: {color: "#22c55e"}},
+			decreasing: {line: {color: "#ef4444"}},
+			name: "Measurement Range",
+		},
+		{
+			x: data.map((d) => formatTime(d.timestamp)),
+			y: data.map((d) => d.measuredX),
+			type: "scatter" as const,
+			mode: "lines",
+			line: {color: "#4f46e5"},
+			name: "Measured Value",
+		},
+		{
+			x: data.map((d) => formatTime(d.timestamp)),
+			y: data.map((d) => d.postMean),
+			type: "scatter" as const,
+			mode: "lines",
+			line: {color: "#22c55e"},
+			name: "Posterior Mean",
+		},
+	];
+};
+
 /* ------------------------------------------------------------------
  * 1) Helper Functions
  * ------------------------------------------------------------------ */
@@ -325,9 +367,7 @@ export default function BayesianNoDriftSimulation() {
 	 * ------------------------------- */
 	return (
 		<div className="container mx-auto py-8">
-			<h1 className="text-3xl font-bold mb-6">
-				Bayesian Simulation (No Drift)
-			</h1>
+			<h1 className="text-3xl font-bold mb-6">Bayesian Simulation</h1>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 				{/* Left Column: Controls */}
@@ -347,6 +387,9 @@ export default function BayesianNoDriftSimulation() {
 							<TabsContent value="model">
 								<div className="my-4 space-y-1">
 									<Label>Production Mean: {settings.productionMean}</Label>
+									<p className="text-xs text-muted-foreground">
+										Average size of production items
+									</p>
 									<Slider
 										min={0}
 										max={100}
@@ -359,6 +402,10 @@ export default function BayesianNoDriftSimulation() {
 								</div>
 								<div className="my-4 space-y-1">
 									<Label>Production Std: {settings.productionStd}</Label>
+									<p className="text-xs text-muted-foreground">
+										The variance level of production items (Bigger value means
+										bigger differences within all the items)
+									</p>
 									<Slider
 										min={1}
 										max={20}
@@ -371,6 +418,10 @@ export default function BayesianNoDriftSimulation() {
 								</div>
 								<div className="my-4 space-y-1">
 									<Label>Measurement Std (τ): {settings.measurementStd}</Label>
+									<p className="text-xs text-muted-foreground">
+										(Bigger value means bigger differences between the true
+										value and the measured value)
+									</p>
 									<Slider
 										min={1}
 										max={20}
@@ -383,6 +434,10 @@ export default function BayesianNoDriftSimulation() {
 								</div>
 								<div className="my-4 space-y-1">
 									<Label>Prior Std (σ₀): {settings.priorStd}</Label>
+									<p className="text-xs text-muted-foreground">
+										How uncertain you are to the measurement (Higher σ₀ =
+										measured value could be far from the true value)
+									</p>
 									<Slider
 										min={1}
 										max={30}
@@ -399,6 +454,9 @@ export default function BayesianNoDriftSimulation() {
 							<TabsContent value="spec">
 								<div className="my-4 space-y-1">
 									<Label>Spec Lower (L): {settings.specLower}</Label>
+									<p className="text-xs text-muted-foreground">
+										Set standard of minimal value for the production
+									</p>
 									<Slider
 										min={0}
 										max={100}
@@ -411,6 +469,9 @@ export default function BayesianNoDriftSimulation() {
 								</div>
 								<div className="my-4 space-y-1">
 									<Label>Spec Upper (U): {settings.specUpper}</Label>
+									<p className="text-xs text-muted-foreground">
+										Set standard of maximal value for the production
+									</p>
 									<Slider
 										min={0}
 										max={100}
@@ -426,6 +487,10 @@ export default function BayesianNoDriftSimulation() {
 										Out-of-Spec Threshold (α):{" "}
 										{(settings.alpha * 100).toFixed(1)}%
 									</Label>
+									<p className="text-xs text-muted-foreground">
+										Confidence in the decision to flag the item as out-of-spec
+										(1 - α)
+									</p>
 									<Slider
 										min={0.01}
 										max={0.5}
@@ -440,6 +505,10 @@ export default function BayesianNoDriftSimulation() {
 									<Label>
 										Measurement Interval: {settings.interval / 1000}s
 									</Label>
+									<p className="text-xs text-muted-foreground">
+										Simulated range of time passed from each input of
+										measurement
+									</p>
 									<Slider
 										min={100}
 										max={5000}
@@ -654,6 +723,82 @@ export default function BayesianNoDriftSimulation() {
 						<div className="flex items-center gap-1">
 							<div className="w-3 h-3 rounded-full bg-green-500" />
 							<span>Posterior Mean</span>
+						</div>
+						<div className="flex items-center gap-1 text-red-500">
+							<AlertTriangle className="h-4 w-4" />
+							<span>Spec Limits</span>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			<Card className="mb-6">
+				<CardHeader>
+					<CardTitle>Measurement Distribution Over Time</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="h-64">
+						<Plot
+							data={getCandlestickData(data)}
+							layout={{
+								xaxis: {
+									type: "category",
+									rangeslider: {visible: false},
+								},
+								yaxis: {title: "Value"},
+								shapes: [
+									// Lower spec limit
+									{
+										type: "line",
+										x0: -0.5,
+										x1: data.length - 0.5,
+										y0: settings.specLower,
+										y1: settings.specLower,
+										line: {
+											color: "#dc2626",
+											width: 1,
+											dash: "dash",
+										},
+									},
+									// Upper spec limit
+									{
+										type: "line",
+										x0: -0.5,
+										x1: data.length - 0.5,
+										y0: settings.specUpper,
+										y1: settings.specUpper,
+										line: {
+											color: "#dc2626",
+											width: 1,
+											dash: "dash",
+										},
+									},
+								],
+								showlegend: true,
+								legend: {
+									x: 0,
+									y: 1,
+									orientation: "h",
+								},
+								margin: {t: 10, r: 10, b: 30, l: 60},
+								height: 256,
+							}}
+							useResizeHandler={true}
+							style={{width: "100%", height: "100%"}}
+						/>
+					</div>
+					<div className="flex flex-wrap gap-2 mt-4 text-sm">
+						<div className="flex items-center gap-1">
+							<div className="w-3 h-3 rounded-full bg-indigo-500" />
+							<span>Measured Value</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<div className="w-3 h-3 rounded-full bg-green-500" />
+							<span>Posterior Mean</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<div className="w-3 h-3 bg-green-500 opacity-30" />
+							<span>±2σ Range</span>
 						</div>
 						<div className="flex items-center gap-1 text-red-500">
 							<AlertTriangle className="h-4 w-4" />
