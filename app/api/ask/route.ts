@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import {zodResponseFormat} from "openai/helpers/zod";
 import {z} from "zod";
 import type {NextApiRequest, NextApiResponse} from "next";
+import { NextRequest, NextResponse } from "next/server";
 
 // Zod schema for structured output
 const ContextSchema = z.object({
@@ -35,16 +36,13 @@ const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function handler(
-	req: NextApiRequest,
-	res: NextApiResponse
+export async function POST(
+	req: NextRequest,
 ) {
-	if (req.method !== "POST") {
-		return res.status(405).json({error: "Method not allowed"});
-	}
 
 	try {
-		const {question} = req.body;
+		const body = req.json();
+		const {question} = await body;
 
 		// Step 1: Structured analysis with OpenAI
 		const analysis = await openai.chat.completions.create({
@@ -134,17 +132,19 @@ export default async function handler(
 			],
 		});
 
-		return res.status(200).json({
+		return NextResponse.json({
 			answer: response.choices[0].message.content,
 			context: validatedContext,
 			data: data,
-		});
+		},{ status:200});
 	} catch (error) {
 		console.error("RAG Error:", error);
-		return res.status(500).json({
+		return NextResponse.json({
 			error: "Failed to process question",
 			details: error instanceof Error ? error.message : "Unknown error",
-		});
+		},{status:500}
+	
+	);
 	}
 }
 
