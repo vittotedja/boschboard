@@ -21,18 +21,35 @@ import {MoreHorizontal, AlertCircle, CheckCircle, Clock} from "lucide-react";
 import type {Equipment} from "@/lib/types";
 import {cn} from "@/lib/utils";
 import {Badge} from "@/components/ui/badge";
+import {useState} from "react";
+import React from "react";
 
 interface EquipmentTableProps {
 	data: Equipment[];
 	onRowClick: (equipment: Equipment) => void;
 	selectedId?: number;
+	itemsPerPage?: number;
 }
 
 export function EquipmentTable({
 	data,
 	onRowClick,
 	selectedId,
+	itemsPerPage = 10,
 }: EquipmentTableProps) {
+	const [currentPage, setCurrentPage] = useState(1);
+
+	// Calculate pagination values
+	const totalPages = Math.ceil(data.length / itemsPerPage);
+	const startIndex = (currentPage - 1) * itemsPerPage;
+	const endIndex = startIndex + itemsPerPage;
+	const currentData = data.slice(startIndex, endIndex);
+
+	// Add this before the return statement
+	const handlePageChange = (newPage: number) => {
+		setCurrentPage(newPage);
+	};
+
 	const visibleColumns = [
 		"description",
 		"brand",
@@ -97,10 +114,6 @@ export function EquipmentTable({
 							{visibleColumns.includes("serialId") && (
 								<TableHead>Serial ID/No</TableHead>
 							)}
-							{/* {visibleColumns.includes("range") && <TableHead>Range</TableHead>} */}
-							{visibleColumns.includes("toleranceLimit") && (
-								<TableHead>Tolerance Limit</TableHead>
-							)}
 							{visibleColumns.includes("inUse") && (
 								<TableHead>In Use</TableHead>
 							)}
@@ -119,13 +132,6 @@ export function EquipmentTable({
 							{visibleColumns.includes("calibrationType") && (
 								<TableHead>Calibration Type</TableHead>
 							)}
-							{/* {visibleColumns.includes("reportNumber") && (
-								<TableHead>Report Number</TableHead>
-							)}
-							{visibleColumns.includes("calibrator") && (
-								<TableHead>Calibrator</TableHead>
-							)} */}
-							{/* {visibleColumns.includes("pic") && <TableHead>PIC</TableHead>} */}
 							{visibleColumns.includes("actions") && (
 								<TableHead className="w-[80px]">Actions</TableHead>
 							)}
@@ -142,7 +148,7 @@ export function EquipmentTable({
 								</TableCell>
 							</TableRow>
 						) : (
-							data.map((equipment) => (
+							currentData.map((equipment) => (
 								<TableRow
 									key={equipment.id}
 									onClick={() => onRowClick(equipment)}
@@ -172,12 +178,6 @@ export function EquipmentTable({
 									)}
 									{visibleColumns.includes("serialId") && (
 										<TableCell>{equipment.serialId}</TableCell>
-									)}
-									{/* {visibleColumns.includes("range") && (
-										<TableCell>{equipment.range}</TableCell>
-									)} */}
-									{visibleColumns.includes("toleranceLimit") && (
-										<TableCell>{equipment.toleranceLimit}</TableCell>
 									)}
 									{visibleColumns.includes("inUse") && (
 										<TableCell>
@@ -211,15 +211,6 @@ export function EquipmentTable({
 											</Badge>
 										</TableCell>
 									)}
-									{/* {visibleColumns.includes("reportNumber") && (
-										<TableCell>{equipment.reportNumber}</TableCell>
-									)}
-									{visibleColumns.includes("calibrator") && (
-										<TableCell>{equipment.calibrator}</TableCell>
-									)}
-									{visibleColumns.includes("pic") && (
-										<TableCell>{equipment.pic}</TableCell>
-									)} */}
 									{visibleColumns.includes("actions") && (
 										<TableCell>
 											<DropdownMenu>
@@ -252,6 +243,56 @@ export function EquipmentTable({
 						)}
 					</TableBody>
 				</Table>
+			</div>
+
+			<div className="flex items-center justify-between px-4 py-4 border-t">
+				<p className="text-sm text-muted-foreground">
+					Showing {startIndex + 1} to {Math.min(endIndex, data.length)} of{" "}
+					{data.length} results
+				</p>
+				<div className="flex space-x-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handlePageChange(currentPage - 1)}
+						disabled={currentPage === 1}
+					>
+						Previous
+					</Button>
+					<div className="flex items-center space-x-2">
+						{Array.from({length: totalPages}, (_, i) => i + 1)
+							.filter((page) => {
+								// Show first page, last page, current page, and pages around current
+								return (
+									page === 1 ||
+									page === totalPages ||
+									Math.abs(page - currentPage) <= 1
+								);
+							})
+							.map((page, i, array) => (
+								<React.Fragment key={page}>
+									{i > 0 && array[i - 1] !== page - 1 && (
+										<span className="text-muted-foreground">...</span>
+									)}
+									<Button
+										variant={currentPage === page ? "default" : "outline"}
+										size="sm"
+										onClick={() => handlePageChange(page)}
+									>
+										{page}
+									</Button>
+								</React.Fragment>
+							))}
+					</div>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handlePageChange(currentPage + 1)}
+						disabled={currentPage === totalPages}
+					>
+						Next
+					</Button>
+				</div>
 			</div>
 		</div>
 	);
