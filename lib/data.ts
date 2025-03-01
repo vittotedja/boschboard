@@ -66,5 +66,3 @@ export const generateEquipmentData = async (): Promise<Equipment[]> => {
 	});
 	return newEquipmentList;
 };
-
-export const equipmentData = await generateEquipmentData();

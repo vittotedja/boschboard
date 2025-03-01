@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
 			throw new Error("Invalid response from OpenAI");
 		}
 		const context = JSON.parse(content);
-		console.log(context)
 		const validatedContext = ContextSchema.parse(context);
 
 		// Step 2: Dynamic data retrieval
