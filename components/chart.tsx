@@ -283,28 +283,29 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
             },
             yaxis: { title: "Measurement (mm)" },
             shapes: [
-              ...(showThreshold
-                ? [
-                    {
-                      type: "line",
-                      x0: aggregatedData[0].time,
-                      x1: aggregatedData[aggregatedData.length - 1].time,
-                      y0: min,
-                      y1: min,
-                      line: { color: "rgb(18, 42, 71)", width: 2, dash: "dash" },
-                    },
-                    {
-                      type: "line",
-                      x0: aggregatedData[0].time,
-                      x1: aggregatedData[aggregatedData.length - 1].time,
-                      y0: max,
-                      y1: max,
-                      line: { color: "rgb(18, 42, 71)", width: 2, dash: "dash" },
-                    },
-                  ]
-                : []),
-            ] as Partial<Shape>[],
-            height: 400,
+				...(showThreshold
+				  ? [
+					  {
+						type: "line",
+						x0: aggregatedData[0].time,
+						x1: aggregatedData[aggregatedData.length - 1].time,
+						y0: 183,
+						y1: 183,
+						line: { color: "rgb(18, 42, 71)", width: 2, dash: "dash" },
+					  },
+					  {
+						type: "line",
+						x0: aggregatedData[0].time,
+						x1: aggregatedData[aggregatedData.length - 1].time,
+						y0: 193,
+						y1: 193,
+						line: { color: "rgb(18, 42, 71)", width: 2, dash: "dash" },
+					  },
+					]
+				  : []),
+			  ] as Partial<Shape>[],
+			  height: 400,
+  
           }}
           useResizeHandler={true}
           style={{ width: "100%" }}
