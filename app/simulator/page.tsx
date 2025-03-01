@@ -26,6 +26,7 @@ import {
 import {Play, Pause, RefreshCw, AlertTriangle} from "lucide-react";
 import {Badge} from "@/components/ui/badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import TimeSeriesChart from "@/components/chart"; // Adjust the path if needed
 
 import dynamic from "next/dynamic";
 import type {Data} from "plotly.js";
@@ -193,17 +194,17 @@ interface SimulationSettings {
 export default function BayesianNoDriftSimulation() {
 	const [settings, setSettings] = useState<SimulationSettings>({
 		// Production
-		productionMean: 50,
+		productionMean: 185,
 		productionStd: 5,
 
 		// Measurement
 		measurementStd: 2,
-		priorMean: 50,
+		priorMean: 185,
 		priorStd: 10,
 
 		// Spec & Decision
-		specLower: 40,
-		specUpper: 60,
+		specLower: 180,
+		specUpper: 195,
 		alpha: 0.05,
 
 		// Error toggles
@@ -219,6 +220,7 @@ export default function BayesianNoDriftSimulation() {
 
 	// The array of all measurements
 	const [data, setData] = useState<MeasurementRecord[]>([]);
+	const [simulateLiveData, setsimulateLiveData] = useState<boolean>(false);
 
 	// Interval ref
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -299,6 +301,7 @@ export default function BayesianNoDriftSimulation() {
 	 * ------------------------------- */
 	const toggleSimulation = () => {
 		setSettings((prev) => ({...prev, isRunning: !prev.isRunning}));
+		setsimulateLiveData(true)
 	};
 
 	const resetSimulation = () => {
@@ -308,6 +311,7 @@ export default function BayesianNoDriftSimulation() {
 		}
 		setSettings((prev) => ({...prev, isRunning: false}));
 		setData([]);
+		setsimulateLiveData(false)
 	};
 
 	/* -------------------------------
@@ -669,142 +673,77 @@ export default function BayesianNoDriftSimulation() {
 			</div>
 
 			{/* Time Series Chart */}
-			<Card className="mb-6">
-				<CardHeader>
-					<CardTitle>Measurements Over Time</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="h-64">
-						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={chartData}>
-								<CartesianGrid strokeDasharray="3 3" />
-								<XAxis dataKey="time" />
-								<YAxis />
-								<Tooltip />
-								{/* Measured Value */}
-								<Line
-									type="monotone"
-									dataKey="measured"
-									stroke="#4f46e5"
-									name="Measured (X)"
-									dot={{r: 2}}
-									activeDot={{r: 6}}
-								/>
-								{/* Posterior Mean */}
-								<Line
-									type="monotone"
-									dataKey="postMean"
-									stroke="#22c55e"
-									name="Posterior Mean"
-									dot={{r: 2}}
-									activeDot={{r: 6}}
-								/>
-								{/* Reference lines for Spec Limits */}
-								<ReferenceLine
-									y={settings.specLower}
-									stroke="#dc2626"
-									strokeDasharray="3 3"
-									label="Spec Lower"
-								/>
-								<ReferenceLine
-									y={settings.specUpper}
-									stroke="#dc2626"
-									strokeDasharray="3 3"
-									label="Spec Upper"
-								/>
-							</LineChart>
-						</ResponsiveContainer>
-					</div>
-					<div className="flex flex-wrap gap-2 mt-4 text-sm">
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-indigo-500" />
-							<span>Measured Value</span>
-						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-green-500" />
-							<span>Posterior Mean</span>
-						</div>
-						<div className="flex items-center gap-1 text-red-500">
-							<AlertTriangle className="h-4 w-4" />
-							<span>Spec Limits</span>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+			{/* Time Series Chart */}
+<Card className="mb-6">
+  <CardHeader>
+    <CardTitle>Measurements Over Time</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="time" />
+          <YAxis domain={[150, 200]} /> {/* Set the Y-Axis range from 150 to 200 */}
+          <Tooltip />
+          {/* Measured Value */}
+          <Line
+            type="monotone"
+            dataKey="measured"
+            stroke="#4f46e5"
+            name="Measured (X)"
+            dot={{ r: 2 }}
+            activeDot={{ r: 6 }}
+          />
+          {/* Posterior Mean */}
+          <Line
+            type="monotone"
+            dataKey="postMean"
+            stroke="#22c55e"
+            name="Posterior Mean"
+            dot={{ r: 2 }}
+            activeDot={{ r: 6 }}
+          />
+          {/* Reference lines for Spec Limits */}
+          <ReferenceLine
+            y={settings.specLower}
+            stroke="#dc2626"
+            strokeDasharray="3 3"
+            label="Spec Lower"
+          />
+          <ReferenceLine
+            y={settings.specUpper}
+            stroke="#dc2626"
+            strokeDasharray="3 3"
+            label="Spec Upper"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex flex-wrap gap-2 mt-4 text-sm">
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded-full bg-indigo-500" />
+        <span>Measured Value</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded-full bg-green-500" />
+        <span>Posterior Mean</span>
+      </div>
+      <div className="flex items-center gap-1 text-red-500">
+        <AlertTriangle className="h-4 w-4" />
+        <span>Spec Limits</span>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
 
 			<Card className="mb-6">
 				<CardHeader>
 					<CardTitle>Measurement Distribution Over Time</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="h-64">
-						<Plot
-							data={getCandlestickData(data)}
-							layout={{
-								xaxis: {
-									type: "category",
-									rangeslider: {visible: false},
-								},
-								yaxis: {title: "Value"},
-								shapes: [
-									// Lower spec limit
-									{
-										type: "line",
-										x0: -0.5,
-										x1: data.length - 0.5,
-										y0: settings.specLower,
-										y1: settings.specLower,
-										line: {
-											color: "#dc2626",
-											width: 1,
-											dash: "dash",
-										},
-									},
-									// Upper spec limit
-									{
-										type: "line",
-										x0: -0.5,
-										x1: data.length - 0.5,
-										y0: settings.specUpper,
-										y1: settings.specUpper,
-										line: {
-											color: "#dc2626",
-											width: 1,
-											dash: "dash",
-										},
-									},
-								],
-								showlegend: true,
-								legend: {
-									x: 0,
-									y: 1,
-									orientation: "h",
-								},
-								margin: {t: 10, r: 10, b: 30, l: 60},
-								height: 256,
-							}}
-							useResizeHandler={true}
-							style={{width: "100%", height: "100%"}}
-						/>
-					</div>
-					<div className="flex flex-wrap gap-2 mt-4 text-sm">
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-indigo-500" />
-							<span>Measured Value</span>
-						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-green-500" />
-							<span>Posterior Mean</span>
-						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 bg-green-500 opacity-30" />
-							<span>±2σ Range</span>
-						</div>
-						<div className="flex items-center gap-1 text-red-500">
-							<AlertTriangle className="h-4 w-4" />
-							<span>Spec Limits</span>
-						</div>
-					</div>
+					<TimeSeriesChart simulateLiveData={simulateLiveData} />
 				</CardContent>
 			</Card>
 
@@ -822,7 +761,7 @@ export default function BayesianNoDriftSimulation() {
 								<TableRow>
 									<TableHead>ID</TableHead>
 									<TableHead>Time</TableHead>
-									<TableHead>True Y</TableHead>
+									<TableHead>T`rue Y</TableHead>
 									<TableHead>Prod Error?</TableHead>
 									<TableHead>Measured X</TableHead>
 									<TableHead>Measure Error?</TableHead>
