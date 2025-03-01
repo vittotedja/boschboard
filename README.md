@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BoschBoard
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3DBE41?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.io/)
 
-First, run the development server:
+Boschboard is an intelligent web application designed to predict when to calibrate industrial machinery, optimizing the calibration schedule to minimize costs. This tool leverages advanced machine learning techniques and OpenAI's language models to provide actionable insights, making the calibration process more efficient and cost-effective.
 
+**Hackathon Submission** for [Deep Learning Week](https://www.dlweek.com/) by Team Strawberry
+
+## 🌟 Key Features
+
+| Feature | Description |
+|---------|-------------|
+| ⏱️ Predictive Calibration | Machine learning models predict optimal calibration timing before critical thresholds |
+| 💰 Cost Optimization | AI-driven scheduling reduces maintenance costs |
+| 🧠 Reinforcement Learning | Adaptive learning from historical maintenance data |
+| 📈 Error Forecasting | Accurate time-series predictions for equipment condition monitoring using XGBoost |
+| 💬 RAG Assistant | AI-powered Q&A system for technical documentation |
+
+## 👥 Meet the Team
+
+| Member                    | GitHub                           |
+|--------------------------|----------------------------------|
+| Vitto Surya Tedja       | [@vittotedja](https://github.com/vittotedja) |
+| Emily Aurelia           | [@emilyaurelia](https://github.com/emilyaurelia) |
+| Alexander Vincent Lewi  | [@vincentlewi](https://github.com/vincentlewi) |
+| Yozafard Harold         | [@yozafard](https://github.com/yozafard) |
+| Dennis Hardianto        | [@dennish18](https://github.com/dennish18) |
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: [Next.js](https://nextjs.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
+
+### Backend
+- **ML Framework**: PyTorch
+- **Time Series**: statsmodels (ARIMA)
+- **API**: FastAPI
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js ≥18.x
+- Python 3.10+
+- OpenAI API key
+
+### Installation
+
+1. **Clone Repository**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/rexroth-calibration-assistant.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install Dependencies**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+# Frontend
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Environment Setup**
 
-## Learn More
+```
+# Add your .env in root directory
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Running the App**
+```
+npm run dev
+```
