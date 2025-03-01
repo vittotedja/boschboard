@@ -1,9 +1,13 @@
-import {CalibrationDashboard} from "@/components/calibration-dashboard";
+"use client";
+import React from "react";
+import TimeSeriesChart from "@/components/chart"; // Adjust the path if needed
 
-export default function Home() {
+const App: React.FC = () => {
 	return (
-		<main className="min-h-screen bg-background">
-			<CalibrationDashboard />
-		</main>
+		<div className="App">
+			<TimeSeriesChart />
+		</div>
 	);
-}
+};
+
+export default App;

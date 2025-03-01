@@ -18,6 +18,9 @@ module.exports = {
 		},
 		extend: {
 			colors: {
+				'dark-blue': '#122A47', //sky950
+				'light-blue': '#A1D9F1', //sky-200
+				'red': '#CE332D', //red-600
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
@@ -78,6 +81,7 @@ module.exports = {
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
+				'expand-left-to-right': 'expand-left-to-right 0.5s ease',
 			},
 		},
 	},
