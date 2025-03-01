@@ -16,7 +16,7 @@ function getNextDate(lastDate: string, intervalYears: number) {
 }
 
 // Generate sample data
-const generateEquipmentData = async (): Promise<Equipment[]> => {
+export const generateEquipmentData = async (): Promise<Equipment[]> => {
 	const {data: rawEquipmentData, error} = await supabase
 		.from("tools")
 		.select("*, calibration_records(*)");
