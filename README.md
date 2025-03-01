@@ -13,35 +13,31 @@ Boschboard is an intelligent web application designed to predict when to calibra
 
 ## 🌟 Key Features
 
-| Feature | Description |
-|---------|-------------|
+| Feature                   | Description                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------- |
 | ⏱️ Predictive Calibration | Machine learning models predict optimal calibration timing before critical thresholds |
-| 💰 Cost Optimization | AI-driven scheduling reduces maintenance costs |
-| 🧠 Reinforcement Learning | Adaptive learning from historical maintenance data |
-| 📈 Error Forecasting | Accurate time-series predictions for equipment condition monitoring using XGBoost |
-| 💬 RAG Assistant | AI-powered Q&A system for technical documentation |
+| 💰 Cost Optimization      | AI-driven scheduling reduces maintenance costs                                        |
+| 🧠 Reinforcement Learning | Adaptive learning from historical maintenance data                                    |
+| 📈 Error Forecasting      | Accurate time-series predictions for equipment condition monitoring using XGBoost     |
+| 💬 RAG Assistant          | AI-powered Q&A system for technical documentation                                     |
 
 ## 👥 Meet the Team
 
-| Member                    | GitHub                           |
-|--------------------------|----------------------------------|
-| Vitto Surya Tedja       | [@vittotedja](https://github.com/vittotedja) |
-| Emily Aurelia           | [@emilyaurelia](https://github.com/emilyaurelia) |
-| Alexander Vincent Lewi  | [@vincentlewi](https://github.com/vincentlewi) |
-| Yozafard Harold         | [@yozafard](https://github.com/yozafard) |
-| Dennis Hardianto        | [@dennish18](https://github.com/dennish18) |
+| Member                 | GitHub                                           |
+| ---------------------- | ------------------------------------------------ |
+| Vitto Surya Tedja      | [@vittotedja](https://github.com/vittotedja)     |
+| Emily Aurelia          | [@emilyaurelia](https://github.com/emilyaurelia) |
+| Alexander Vincent Lewi | [@vincentlewi](https://github.com/vincentlewi)   |
+| Yozafard Harold        | [@yozafard](https://github.com/yozafard)         |
+| Dennis Hardianto       | [@dennish18](https://github.com/dennish18)       |
 
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: [Next.js](https://nextjs.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
-
-### Backend
-- **ML Framework**: PyTorch
-- **Time Series**: statsmodels (ARIMA)
-- **API**: FastAPI
 
 ## 🚀 Getting Started
 
@@ -50,12 +46,14 @@ Boschboard is an intelligent web application designed to predict when to calibra
 - Node.js ≥18.x
 - Python 3.10+
 - OpenAI API key
+- Supabase Account
 
 ### Installation
 
 1. **Clone Repository**
+
 ```bash
-git clone https://github.com/yourusername/rexroth-calibration-assistant.git
+git clone https://github.com/vittotedja/boschboard.git
 ```
 
 2. **Install Dependencies**
@@ -71,9 +69,11 @@ npm install
 # Add your .env in root directory
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+OPEN_AI_API_KEY=
 ```
 
 3. **Running the App**
+
 ```
 npm run dev
 ```
