@@ -1,6 +1,13 @@
 "use client";
 
-import React, {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useRef} from "react";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {
@@ -21,59 +28,57 @@ import {
 	CartesianGrid,
 	Tooltip,
 	ResponsiveContainer,
+	AreaChart,
+	Area,
 	ReferenceLine,
+	Scatter,
 } from "recharts";
-import {Play, Pause, RefreshCw, AlertTriangle} from "lucide-react";
+import {Play, Pause, RefreshCw, AlertTriangle, AlertCircle} from "lucide-react";
 import {Badge} from "@/components/ui/badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 
-import dynamic from "next/dynamic";
-import type {Data} from "plotly.js";
-const Plot = dynamic(
-	() => import("react-plotly.js").then((mod) => mod.default),
-	{
-		ssr: false,
-	}
-);
+// Define the types for our data
+interface Measurement {
+	id: number;
+	timestamp: Date;
+	value: number;
+	item: string;
+	hasMeasurementError: boolean;
+	hasItemError: boolean;
+	isValid: boolean;
+}
 
-// In your BayesianNoDriftSimulation component, add this new function before the return statement
-const getCandlestickData = (data: MeasurementRecord[]): Data[] => {
-	return [
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			open: data.map((d) => d.measuredX),
-			high: data.map((d) => d.postMean + 2 * d.postStd),
-			low: data.map((d) => d.postMean - 2 * d.postStd),
-			close: data.map((d) => d.measuredX),
-			type: "candlestick" as const,
-			increasing: {line: {color: "#22c55e"}},
-			decreasing: {line: {color: "#ef4444"}},
-			name: "Measurement Range",
-		},
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			y: data.map((d) => d.measuredX),
-			type: "scatter" as const,
-			mode: "lines",
-			line: {color: "#4f46e5"},
-			name: "Measured Value",
-		},
-		{
-			x: data.map((d) => formatTime(d.timestamp)),
-			y: data.map((d) => d.postMean),
-			type: "scatter" as const,
-			mode: "lines",
-			line: {color: "#22c55e"},
-			name: "Posterior Mean",
-		},
-	];
-};
+interface SimulationSettings {
+	mean: number;
+	stdDev: number;
+	interval: number;
+	isRunning: boolean;
+	timeWindow: number;
+	measurementErrorRate: number;
+	measurementErrorMagnitude: number;
+	itemErrorRate: number;
+	itemErrorDuration: number;
+	currentItemError: {
+		active: boolean;
+		remainingDuration: number;
+	};
+}
 
-/* ------------------------------------------------------------------
- * 1) Helper Functions
- * ------------------------------------------------------------------ */
+interface ScatterPropsType {
+	cx: number;
+	cy: number;
+}
 
-/** Generate a random value from N(mean, stdDev^2) */
+// List of items to choose from
+const ITEMS = [
+	{id: "temp", name: "Temperature (°C)"},
+	{id: "pressure", name: "Pressure (kPa)"},
+	{id: "humidity", name: "Humidity (%)"},
+	{id: "flow", name: "Flow Rate (L/min)"},
+	{id: "voltage", name: "Voltage (V)"},
+];
+
+// Function to generate normally distributed random numbers
 function generateNormalRandom(mean: number, stdDev: number): number {
 	let u = 0,
 		v = 0;
@@ -83,509 +88,437 @@ function generateNormalRandom(mean: number, stdDev: number): number {
 	return mean + stdDev * z;
 }
 
-/**
- * Compute the posterior distribution for the true weight (Y) given
- * a measurement X, assuming:
- *    Y ~ Normal(priorMean, priorStd^2)
- *    X | Y ~ Normal(Y, measStd^2)
- *
- * Returns: { meanPost, stdPost }
- */
-function computePosterior(
-	measuredX: number,
-	priorMean: number,
-	priorStd: number,
-	measStd: number
-) {
-	// Posterior variance:
-	const varPost = 1 / (1 / priorStd ** 2 + 1 / measStd ** 2);
-	const stdPost = Math.sqrt(varPost);
-
-	// Posterior mean:
-	const meanPost =
-		varPost * (priorMean / priorStd ** 2 + measuredX / measStd ** 2);
-
-	return {meanPost, stdPost};
-}
-
-/**
- * Quick approximation of the standard normal CDF.
- */
-function standardNormalCDF(z: number): number {
-	const t = 1 / (1 + 0.2315419 * Math.abs(z));
-	const d = 0.3989423 * Math.exp((-z * z) / 2);
-	let p =
-		d *
-		t *
-		(0.3193815 +
-			t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + 1.330274 * t))));
-	if (z > 0) p = 1 - p;
-	return p;
-}
-
-/** Compute P(L <= Y <= U) for Y ~ Normal(mean, std). */
-function probInRange(mean: number, std: number, L: number, U: number) {
-	const zL = (L - mean) / std;
-	const zU = (U - mean) / std;
-	return standardNormalCDF(zU) - standardNormalCDF(zL);
-}
-
-/** Format a Date object to a small time string (H:M:S) */
-function formatTime(date: Date) {
+// Function to format date for display
+function formatDate(date: Date): string {
 	return date.toLocaleTimeString();
 }
 
-/* ------------------------------------------------------------------
- * 2) Types
- * ------------------------------------------------------------------ */
+export default function SimulationPage() {
+	// State for the selected item
+	const [selectedItem, setSelectedItem] = useState(ITEMS[0].id);
 
-interface MeasurementRecord {
-	id: number;
-	timestamp: Date;
+	// State for measurements
+	const [measurements, setMeasurements] = useState<Measurement[]>([]);
 
-	/** True item weight */
-	trueY: number;
-	/** If forced out-of-spec => production error */
-	hasProductionError: boolean;
-
-	/** Observed measurement */
-	measuredX: number;
-	/** If used bigger noise => measurement error */
-	hasMeasurementError: boolean;
-
-	/** Bayesian posterior ignoring the above errors */
-	postMean: number;
-	postStd: number;
-	pInSpec: number;
-	flagged: boolean; // flagged out-of-spec if pInSpec < alpha
-}
-
-interface SimulationSettings {
-	// Production
-	productionMean: number;
-	productionStd: number;
-
-	// Measurement
-	measurementStd: number;
-	priorMean: number;
-	priorStd: number;
-
-	// Spec & Decision
-	specLower: number;
-	specUpper: number;
-	alpha: number;
-
-	// Additional error toggles
-	measurementErrorRate: number;
-	measurementErrorMagnitude: number;
-	productionErrorRate: number;
-
-	// Simulation control
-	interval: number;
-	timeWindow: number;
-	isRunning: boolean;
-}
-
-/* ------------------------------------------------------------------
- * 3) Main React Component
- * ------------------------------------------------------------------ */
-
-export default function BayesianNoDriftSimulation() {
+	// State for simulation settings
 	const [settings, setSettings] = useState<SimulationSettings>({
-		// Production
-		productionMean: 50,
-		productionStd: 5,
-
-		// Measurement
-		measurementStd: 2,
-		priorMean: 50,
-		priorStd: 10,
-
-		// Spec & Decision
-		specLower: 40,
-		specUpper: 60,
-		alpha: 0.05,
-
-		// Error toggles
-		measurementErrorRate: 0.2,
-		measurementErrorMagnitude: 3,
-		productionErrorRate: 0.1,
-
-		// Simulation control
-		interval: 1000,
-		timeWindow: 60,
+		mean: 50,
+		stdDev: 10,
+		interval: 1000, // 1 second
 		isRunning: false,
+		timeWindow: 60, // 60 seconds
+		measurementErrorRate: 0.1, // 10% chance of measurement error
+		measurementErrorMagnitude: 3, // Multiplier for the standard deviation
+		itemErrorRate: 0.05, // 5% chance of item error starting
+		itemErrorDuration: 5, // Duration in seconds
+		currentItemError: {
+			active: false,
+			remainingDuration: 0,
+		},
 	});
 
-	// The array of all measurements
-	const [data, setData] = useState<MeasurementRecord[]>([]);
-
-	// Interval ref
+	// Ref for the interval
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-	/* -------------------------------
-	 * Generate a new measurement
-	 * ------------------------------- */
+	// Function to generate a new measurement
 	const generateMeasurement = () => {
-		// 1) Decide if production error
-		let hasProductionError = false;
-		let trueY = generateNormalRandom(
-			settings.productionMean,
-			settings.productionStd
-		);
-		if (Math.random() < settings.productionErrorRate) {
-			// Force the item out-of-spec
-			hasProductionError = true;
-			if (Math.random() < 0.5) {
-				trueY = settings.specLower - 5 - Math.abs(generateNormalRandom(0, 3));
-			} else {
-				trueY = settings.specUpper + 5 + Math.abs(generateNormalRandom(0, 3));
+		// Check if we need to update item error state
+		const currentItemError = {...settings.currentItemError};
+
+		// If there's an active item error, decrement its duration
+		if (currentItemError.active) {
+			currentItemError.remainingDuration -= settings.interval / 1000;
+
+			// If the error duration is over, clear the error
+			if (currentItemError.remainingDuration <= 0) {
+				currentItemError.active = false;
+				currentItemError.remainingDuration = 0;
 			}
 		}
-
-		// 2) Decide if measurement error => bigger noise
-		let hasMeasurementError = false;
-		let usedMeasStd = settings.measurementStd;
-		if (Math.random() < settings.measurementErrorRate) {
-			hasMeasurementError = true;
-			usedMeasStd *= settings.measurementErrorMagnitude;
+		// If there's no active error, check if a new one should start
+		else if (Math.random() < settings.itemErrorRate) {
+			currentItemError.active = true;
+			currentItemError.remainingDuration = settings.itemErrorDuration;
 		}
 
-		// 3) Observed measurement
-		const measX = generateNormalRandom(trueY, usedMeasStd);
+		// Update the item error state
+		setSettings((prev) => ({
+			...prev,
+			currentItemError,
+		}));
 
-		// 4) Bayesian posterior ignoring the fact we had big noise / forced error
-		const {meanPost, stdPost} = computePosterior(
-			measX,
-			settings.priorMean,
-			settings.priorStd,
-			settings.measurementStd
-		);
+		// Determine if this measurement has a measurement error
+		const hasMeasurementError = Math.random() < settings.measurementErrorRate;
 
-		// 5) Probability in spec
-		const pInSpec = probInRange(
-			meanPost,
-			stdPost,
-			settings.specLower,
-			settings.specUpper
-		);
+		// Generate the base value
+		let value: number;
 
-		const flagged = pInSpec < settings.alpha;
+		if (hasMeasurementError) {
+			// For measurement errors, we use a larger standard deviation
+			value = generateNormalRandom(
+				settings.mean,
+				settings.stdDev * settings.measurementErrorMagnitude
+			);
+		} else {
+			value = generateNormalRandom(settings.mean, settings.stdDev);
+		}
 
-		// 6) Build record
-		const record: MeasurementRecord = {
+		// Create the measurement object
+		const newMeasurement: Measurement = {
 			id: Date.now(),
 			timestamp: new Date(),
-			trueY: Number(trueY.toFixed(2)),
-			hasProductionError,
-			measuredX: Number(measX.toFixed(2)),
+			value: Number.parseFloat(value.toFixed(2)),
+			item: ITEMS.find((item) => item.id === selectedItem)?.name || "",
 			hasMeasurementError,
-			postMean: Number(meanPost.toFixed(2)),
-			postStd: Number(stdPost.toFixed(2)),
-			pInSpec,
-			flagged,
+			hasItemError: currentItemError.active,
+			isValid: !currentItemError.active, // Item is invalid during item errors
 		};
 
-		// 7) Update data
-		const cutoff = Date.now() - settings.timeWindow * 1000;
-		setData((prev) => {
-			const arr = [...prev, record];
-			return arr.filter((d) => d.timestamp.getTime() > cutoff);
+		setMeasurements((prev) => {
+			// Keep only measurements within the time window
+			const cutoffTime = new Date(Date.now() - settings.timeWindow * 1000);
+			const filtered = [...prev, newMeasurement].filter(
+				(m) => m.timestamp > cutoffTime
+			);
+			return filtered;
 		});
 	};
 
-	/* -------------------------------
-	 * Simulation Start/Stop/Reset
-	 * ------------------------------- */
+	// Start/stop the simulation
 	const toggleSimulation = () => {
 		setSettings((prev) => ({...prev, isRunning: !prev.isRunning}));
 	};
 
+	// Reset the simulation
 	const resetSimulation = () => {
+		setMeasurements([]);
+		setSettings((prev) => ({
+			...prev,
+			isRunning: false,
+			currentItemError: {
+				active: false,
+				remainingDuration: 0,
+			},
+		}));
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current);
 			intervalRef.current = null;
 		}
-		setSettings((prev) => ({...prev, isRunning: false}));
-		setData([]);
 	};
 
-	/* -------------------------------
-	 * Interval effect
-	 * ------------------------------- */
+	// Update interval when settings change
 	useEffect(() => {
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current);
 			intervalRef.current = null;
 		}
+
 		if (settings.isRunning) {
 			intervalRef.current = setInterval(generateMeasurement, settings.interval);
 		}
+
 		return () => {
-			if (intervalRef.current) clearInterval(intervalRef.current);
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+			}
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [settings.isRunning, settings.interval]);
+	}, [settings.isRunning, settings.interval]); // Added generateMeasurement to dependencies
 
-	/* -------------------------------
-	 * Derived Stats & Chart
-	 * ------------------------------- */
-	const count = data.length;
-	const flaggedCount = data.filter((d) => d.flagged).length;
+	// Calculate statistics
+	const validMeasurements = measurements.filter((m) => m.isValid);
+	const stats =
+		validMeasurements.length > 0
+			? {
+					count: validMeasurements.length,
+					min: Math.min(...validMeasurements.map((m) => m.value)),
+					max: Math.max(...validMeasurements.map((m) => m.value)),
+					avg:
+						validMeasurements.reduce((sum, m) => sum + m.value, 0) /
+						validMeasurements.length,
+					measurementErrorCount: validMeasurements.filter(
+						(m) => m.hasMeasurementError
+					).length,
+					itemErrorCount: measurements.filter((m) => m.hasItemError).length,
+			  }
+			: {
+					count: 0,
+					min: 0,
+					max: 0,
+					avg: 0,
+					measurementErrorCount: 0,
+					itemErrorCount: 0,
+			  };
 
-	// Flagged items that are truly production errors
-	const flaggedProdErrorCount = data.filter(
-		(d) => d.flagged && d.hasProductionError
-	).length;
+	// Prepare data for the distribution chart
+	const prepareDistributionData = () => {
+		if (validMeasurements.length === 0) return [];
 
-	// Flagged items that are measurement error only (no production error)
-	const measErrorOnlyCount = data.filter(
-		(d) => d.hasMeasurementError && !d.hasProductionError
-	).length;
+		// Create bins for the histogram
+		const min = Math.floor(stats.min);
+		const max = Math.ceil(stats.max);
+		const binSize = (max - min) / 10;
+		const bins = Array.from({length: 10}, (_, i) => ({
+			binStart: min + i * binSize,
+			binEnd: min + (i + 1) * binSize,
+			count: 0,
+			errorCount: 0,
+		}));
 
-	const flaggedMeasErrorOnlyCount = data.filter(
-		(d) => d.hasMeasurementError && !d.hasProductionError && d.flagged
-	).length;
+		// Count values in each bin
+		validMeasurements.forEach((m) => {
+			const binIndex = Math.min(
+				Math.floor((m.value - min) / binSize),
+				bins.length - 1
+			);
+			bins[binIndex].count++;
+			if (m.hasMeasurementError) {
+				bins[binIndex].errorCount++;
+			}
+		});
 
-	const avgMeasured =
-		count > 0 ? data.reduce((acc, d) => acc + d.measuredX, 0) / count : 0;
-	const avgPosterior =
-		count > 0 ? data.reduce((acc, d) => acc + d.postMean, 0) / count : 0;
+		return bins.map((bin) => ({
+			range: `${bin.binStart.toFixed(1)}-${bin.binEnd.toFixed(1)}`,
+			count: bin.count,
+			errorCount: bin.errorCount,
+		}));
+	};
 
-	const minMeasured = count > 0 ? Math.min(...data.map((d) => d.measuredX)) : 0;
-	const maxMeasured = count > 0 ? Math.max(...data.map((d) => d.measuredX)) : 0;
+	// Prepare data for the time series chart
+	const prepareTimeSeriesData = () => {
+		return measurements.map((m) => ({
+			time: formatDate(m.timestamp),
+			value: m.isValid ? m.value : null,
+			error: m.hasMeasurementError ? m.value : null,
+			itemError: !m.isValid,
+		}));
+	};
 
-	const chartData = data.map((m) => ({
-		time: formatTime(m.timestamp),
-		measured: m.measuredX,
-		postMean: m.postMean,
-		flagged: m.flagged,
-	}));
+	// Calculate error rates
+	const errorRates = {
+		measurementErrorRate:
+			stats.count > 0
+				? ((stats.measurementErrorCount / stats.count) * 100).toFixed(1)
+				: "0.0",
+		itemErrorRate:
+			measurements.length > 0
+				? ((stats.itemErrorCount / measurements.length) * 100).toFixed(1)
+				: "0.0",
+	};
 
-	/* -------------------------------
-	 * Render
-	 * ------------------------------- */
 	return (
 		<div className="container mx-auto py-8">
-			<h1 className="text-3xl font-bold mb-6">Bayesian Simulation</h1>
+			<h1 className="text-3xl font-bold mb-6">Data Simulation Dashboard</h1>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-				{/* Left Column: Controls */}
+				{/* Simulation Controls */}
 				<Card>
 					<CardHeader>
 						<CardTitle>Simulation Controls</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<Tabs defaultValue="model">
+						<Tabs defaultValue="basic">
 							<TabsList className="mb-4">
-								<TabsTrigger value="model">Model</TabsTrigger>
-								<TabsTrigger value="spec">Spec/Decision</TabsTrigger>
+								<TabsTrigger value="basic">Basic Settings</TabsTrigger>
 								<TabsTrigger value="errors">Error Settings</TabsTrigger>
 							</TabsList>
 
-							{/* Model Tab */}
-							<TabsContent value="model">
-								<div className="my-4 space-y-1">
-									<Label>Production Mean: {settings.productionMean}</Label>
-									<p className="text-xs text-muted-foreground">
-										Average size of production items
-									</p>
+							<TabsContent value="basic" className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="item-select">Select Item</Label>
+									<Select value={selectedItem} onValueChange={setSelectedItem}>
+										<SelectTrigger id="item-select">
+											<SelectValue placeholder="Select an item" />
+										</SelectTrigger>
+										<SelectContent>
+											{ITEMS.map((item) => (
+												<SelectItem key={item.id} value={item.id}>
+													{item.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="mean-input">
+										Mean Value: {settings.mean}
+									</Label>
 									<Slider
+										id="mean-input"
 										min={0}
 										max={100}
 										step={1}
-										value={[settings.productionMean]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, productionMean: val}))
+										value={[settings.mean]}
+										onValueChange={([value]) =>
+											setSettings((prev) => ({...prev, mean: value}))
 										}
 									/>
 								</div>
-								<div className="my-4 space-y-1">
-									<Label>Production Std: {settings.productionStd}</Label>
-									<p className="text-xs text-muted-foreground">
-										The variance level of production items (Bigger value means
-										bigger differences within all the items)
-									</p>
+
+								<div className="space-y-2">
+									<Label htmlFor="stddev-input">
+										Standard Deviation: {settings.stdDev}
+									</Label>
 									<Slider
-										min={1}
-										max={20}
-										step={1}
-										value={[settings.productionStd]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, productionStd: val}))
-										}
-									/>
-								</div>
-								<div className="my-4 space-y-1">
-									<Label>Measurement Std (τ): {settings.measurementStd}</Label>
-									<p className="text-xs text-muted-foreground">
-										(Bigger value means bigger differences between the true
-										value and the measured value)
-									</p>
-									<Slider
-										min={1}
-										max={20}
-										step={1}
-										value={[settings.measurementStd]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, measurementStd: val}))
-										}
-									/>
-								</div>
-								<div className="my-4 space-y-1">
-									<Label>Prior Std (σ₀): {settings.priorStd}</Label>
-									<p className="text-xs text-muted-foreground">
-										How uncertain you are to the measurement (Higher σ₀ =
-										measured value could be far from the true value)
-									</p>
-									<Slider
+										id="stddev-input"
 										min={1}
 										max={30}
 										step={1}
-										value={[settings.priorStd]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, priorStd: val}))
+										value={[settings.stdDev]}
+										onValueChange={([value]) =>
+											setSettings((prev) => ({...prev, stdDev: value}))
 										}
 									/>
 								</div>
-							</TabsContent>
 
-							{/* Spec/Decision Tab */}
-							<TabsContent value="spec">
-								<div className="my-4 space-y-1">
-									<Label>Spec Lower (L): {settings.specLower}</Label>
-									<p className="text-xs text-muted-foreground">
-										Set standard of minimal value for the production
-									</p>
-									<Slider
-										min={0}
-										max={100}
-										step={1}
-										value={[settings.specLower]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, specLower: val}))
-										}
-									/>
-								</div>
-								<div className="my-4 space-y-1">
-									<Label>Spec Upper (U): {settings.specUpper}</Label>
-									<p className="text-xs text-muted-foreground">
-										Set standard of maximal value for the production
-									</p>
-									<Slider
-										min={0}
-										max={100}
-										step={1}
-										value={[settings.specUpper]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, specUpper: val}))
-										}
-									/>
-								</div>
-								<div className="my-4 space-y-1">
-									<Label>
-										Out-of-Spec Threshold (α):{" "}
-										{(settings.alpha * 100).toFixed(1)}%
+								<div className="space-y-2">
+									<Label htmlFor="interval-input">
+										Interval: {settings.interval / 1000}s
 									</Label>
-									<p className="text-xs text-muted-foreground">
-										Confidence in the decision to flag the item as out-of-spec
-										(1 - α)
-									</p>
 									<Slider
-										min={0.01}
-										max={0.5}
-										step={0.01}
-										value={[settings.alpha]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, alpha: val}))
-										}
-									/>
-								</div>
-								<div className="my-4 space-y-1">
-									<Label>
-										Measurement Interval: {settings.interval / 1000}s
-									</Label>
-									<p className="text-xs text-muted-foreground">
-										Simulated range of time passed from each input of
-										measurement
-									</p>
-									<Slider
+										id="interval-input"
 										min={100}
 										max={5000}
 										step={100}
 										value={[settings.interval]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, interval: val}))
+										onValueChange={([value]) =>
+											setSettings((prev) => ({...prev, interval: value}))
 										}
 									/>
 								</div>
-								<div className="my-4 space-y-1">
-									<Label>Time Window: {settings.timeWindow}s</Label>
+
+								<div className="space-y-2">
+									<Label htmlFor="timewindow-input">
+										Time Window: {settings.timeWindow}s
+									</Label>
 									<Slider
+										id="timewindow-input"
 										min={10}
 										max={300}
 										step={10}
 										value={[settings.timeWindow]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, timeWindow: val}))
+										onValueChange={([value]) =>
+											setSettings((prev) => ({...prev, timeWindow: value}))
 										}
 									/>
 								</div>
 							</TabsContent>
 
-							{/* Error Settings Tab */}
-							<TabsContent value="errors">
-								<div className="my-4 space-y-1">
-									<Label>
+							<TabsContent value="errors" className="space-y-4">
+								<div className="p-3 bg-amber-50 border border-amber-200 rounded-md mb-4">
+									<h3 className="font-medium flex items-center text-amber-800">
+										<AlertCircle className="h-4 w-4 mr-2" />
+										Error Simulation Settings
+									</h3>
+									<p className="text-sm text-amber-700 mt-1">
+										Configure how frequently errors occur and their
+										characteristics.
+									</p>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="measurement-error-rate">
 										Measurement Error Rate:{" "}
 										{(settings.measurementErrorRate * 100).toFixed(0)}%
 									</Label>
 									<Slider
+										id="measurement-error-rate"
 										min={0}
 										max={1}
-										step={0.05}
+										step={0.01}
 										value={[settings.measurementErrorRate]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({...s, measurementErrorRate: val}))
+										onValueChange={([value]) =>
+											setSettings((prev) => ({
+												...prev,
+												measurementErrorRate: value,
+											}))
 										}
 									/>
+									<p className="text-xs text-muted-foreground">
+										Percentage of measurements that will have random errors
+									</p>
 								</div>
-								<div className="my-4 space-y-1">
-									<Label>
+
+								<div className="space-y-2">
+									<Label htmlFor="measurement-error-magnitude">
 										Measurement Error Magnitude:{" "}
-										{settings.measurementErrorMagnitude}×
+										{settings.measurementErrorMagnitude}x
 									</Label>
 									<Slider
+										id="measurement-error-magnitude"
 										min={1}
 										max={10}
-										step={1}
+										step={0.5}
 										value={[settings.measurementErrorMagnitude]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({
-												...s,
-												measurementErrorMagnitude: val,
+										onValueChange={([value]) =>
+											setSettings((prev) => ({
+												...prev,
+												measurementErrorMagnitude: value,
 											}))
 										}
 									/>
+									<p className="text-xs text-muted-foreground">
+										How much larger the standard deviation is for error
+										measurements
+									</p>
 								</div>
-								<div className="my-4 space-y-1">
-									<Label>
-										Production Error Rate:{" "}
-										{(settings.productionErrorRate * 100).toFixed(0)}%
+
+								<div className="space-y-2">
+									<Label htmlFor="item-error-rate">
+										Item Error Rate: {(settings.itemErrorRate * 100).toFixed(0)}
+										%
 									</Label>
 									<Slider
+										id="item-error-rate"
 										min={0}
-										max={1}
-										step={0.05}
-										value={[settings.productionErrorRate]}
-										onValueChange={([val]) =>
-											setSettings((s) => ({
-												...s,
-												productionErrorRate: val,
+										max={0.5}
+										step={0.01}
+										value={[settings.itemErrorRate]}
+										onValueChange={([value]) =>
+											setSettings((prev) => ({...prev, itemErrorRate: value}))
+										}
+									/>
+									<p className="text-xs text-muted-foreground">
+										Probability per second that the item will fail
+									</p>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="item-error-duration">
+										Item Error Duration: {settings.itemErrorDuration}s
+									</Label>
+									<Slider
+										id="item-error-duration"
+										min={1}
+										max={30}
+										step={1}
+										value={[settings.itemErrorDuration]}
+										onValueChange={([value]) =>
+											setSettings((prev) => ({
+												...prev,
+												itemErrorDuration: value,
 											}))
 										}
 									/>
+									<p className="text-xs text-muted-foreground">
+										How long an item failure lasts in seconds
+									</p>
 								</div>
+
+								{settings.currentItemError.active && (
+									<div className="p-3 bg-red-50 border border-red-200 rounded-md">
+										<h3 className="font-medium flex items-center text-red-800">
+											<AlertTriangle className="h-4 w-4 mr-2" />
+											Item Error Active
+										</h3>
+										<p className="text-sm text-red-700 mt-1">
+											Item failure will continue for{" "}
+											{settings.currentItemError.remainingDuration.toFixed(1)}{" "}
+											more seconds
+										</p>
+									</div>
+								)}
 							</TabsContent>
 						</Tabs>
 
@@ -612,7 +545,7 @@ export default function BayesianNoDriftSimulation() {
 					</CardContent>
 				</Card>
 
-				{/* Right Column: Stats */}
+				{/* Statistics */}
 				<Card>
 					<CardHeader>
 						<CardTitle>Statistics</CardTitle>
@@ -620,49 +553,72 @@ export default function BayesianNoDriftSimulation() {
 					<CardContent>
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-1">
-								<p className="text-sm text-muted-foreground">Count</p>
-								<p className="text-2xl font-bold">{count}</p>
-							</div>
-							<div className="space-y-1">
-								<p className="text-sm text-muted-foreground">Flagged</p>
-								<p className="text-2xl font-bold">{flaggedCount}</p>
-							</div>
-
-							<div className="space-y-1">
-								<p className="text-sm text-muted-foreground">Avg Measured</p>
-								<p className="text-2xl font-bold">{avgMeasured.toFixed(2)}</p>
-							</div>
-							<div className="space-y-1">
 								<p className="text-sm text-muted-foreground">
-									Avg Posterior Mean
+									Valid Measurements
 								</p>
-								<p className="text-2xl font-bold">{avgPosterior.toFixed(2)}</p>
-							</div>
-
-							<div className="space-y-1">
-								<p className="text-sm text-muted-foreground">Min Measured</p>
-								<p className="text-2xl font-bold">{minMeasured.toFixed(2)}</p>
+								<p className="text-2xl font-bold">{stats.count}</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-sm text-muted-foreground">Max Measured</p>
-								<p className="text-2xl font-bold">{maxMeasured.toFixed(2)}</p>
+								<p className="text-sm text-muted-foreground">Average Value</p>
+								<p className="text-2xl font-bold">{stats.avg.toFixed(2)}</p>
+							</div>
+							<div className="space-y-1">
+								<p className="text-sm text-muted-foreground">Minimum Value</p>
+								<p className="text-2xl font-bold">{stats.min.toFixed(2)}</p>
+							</div>
+							<div className="space-y-1">
+								<p className="text-sm text-muted-foreground">Maximum Value</p>
+								<p className="text-2xl font-bold">{stats.max.toFixed(2)}</p>
 							</div>
 						</div>
 
-						<div className="mt-4 space-y-2">
-							<p className="text-sm text-muted-foreground">
-								Flagged Production Errors
-							</p>
-							<p className="text-2xl font-bold">{flaggedProdErrorCount}</p>
+						<div className="grid grid-cols-2 gap-4 mt-4">
+							<div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+								<p className="text-sm text-yellow-800 font-medium">
+									Measurement Errors
+								</p>
+								<p className="text-xl font-bold text-yellow-700">
+									{stats.measurementErrorCount}{" "}
+									<span className="text-sm font-normal">
+										({errorRates.measurementErrorRate}%)
+									</span>
+								</p>
+							</div>
 
-							<p className="text-sm text-muted-foreground">
-								Flagged Measurement-Error Only
-							</p>
-							<p className="text-2xl font-bold">{flaggedMeasErrorOnlyCount}</p>
-							<p className="text-sm text-muted-foreground">
-								Measurement-Error Only
-							</p>
-							<p className="text-2xl font-bold">{measErrorOnlyCount}</p>
+							<div className="p-3 bg-red-50 border border-red-200 rounded-md">
+								<p className="text-sm text-red-800 font-medium">Item Errors</p>
+								<p className="text-xl font-bold text-red-700">
+									{stats.itemErrorCount}{" "}
+									<span className="text-sm font-normal">
+										({errorRates.itemErrorRate}%)
+									</span>
+								</p>
+							</div>
+						</div>
+
+						{/* Distribution Chart */}
+						<div className="mt-6 h-48">
+							<h3 className="text-sm font-medium mb-2">Value Distribution</h3>
+							<ResponsiveContainer width="100%" height="100%">
+								<AreaChart data={prepareDistributionData()}>
+									<CartesianGrid strokeDasharray="3 3" />
+									<XAxis dataKey="range" />
+									<YAxis />
+									<Tooltip />
+									<Area
+										type="monotone"
+										dataKey="count"
+										fill="rgba(99, 102, 241, 0.4)"
+										stroke="rgb(99, 102, 241)"
+									/>
+									<Area
+										type="monotone"
+										dataKey="errorCount"
+										fill="rgba(245, 158, 11, 0.4)"
+										stroke="rgb(245, 158, 11)"
+									/>
+								</AreaChart>
+							</ResponsiveContainer>
 						</div>
 					</CardContent>
 				</Card>
@@ -676,144 +632,83 @@ export default function BayesianNoDriftSimulation() {
 				<CardContent>
 					<div className="h-64">
 						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={chartData}>
+							<LineChart data={prepareTimeSeriesData()}>
 								<CartesianGrid strokeDasharray="3 3" />
 								<XAxis dataKey="time" />
-								<YAxis />
-								<Tooltip />
-								{/* Measured Value */}
+								<YAxis
+									domain={[
+										Math.floor(stats.min - settings.stdDev * 2),
+										Math.ceil(stats.max + settings.stdDev * 2),
+									]}
+								/>
+								<Tooltip
+									formatter={(value, name) => {
+										if (name === "value") return [value, "Value"];
+										if (name === "error") return [value, "Measurement Error"];
+										return [value, name];
+									}}
+								/>
 								<Line
 									type="monotone"
-									dataKey="measured"
-									stroke="#4f46e5"
-									name="Measured (X)"
+									dataKey="value"
+									stroke="rgb(99, 102, 241)"
 									dot={{r: 2}}
 									activeDot={{r: 6}}
+									connectNulls={false}
 								/>
-								{/* Posterior Mean */}
-								<Line
-									type="monotone"
-									dataKey="postMean"
-									stroke="#22c55e"
-									name="Posterior Mean"
-									dot={{r: 2}}
-									activeDot={{r: 6}}
+								<Scatter
+									dataKey="error"
+									fill="rgb(245, 158, 11)"
+									shape={(props) => {
+										const { cx, cy } = props as ScatterPropsType;
+										return (
+											<circle
+												cx={cx}
+												cy={cy}
+												r={4}
+												stroke="rgb(245, 158, 11)"
+												strokeWidth={2}
+												fill="rgb(245, 158, 11)"
+											/>
+										);
+									}}
 								/>
-								{/* Reference lines for Spec Limits */}
-								<ReferenceLine
-									y={settings.specLower}
-									stroke="#dc2626"
-									strokeDasharray="3 3"
-									label="Spec Lower"
-								/>
-								<ReferenceLine
-									y={settings.specUpper}
-									stroke="#dc2626"
-									strokeDasharray="3 3"
-									label="Spec Upper"
-								/>
+								{/* Add markers for item errors */}
+								{prepareTimeSeriesData()
+									.filter((d) => d.itemError)
+									.map((d, i) => (
+										<ReferenceLine
+											key={i}
+											x={d.time}
+											stroke="rgb(220, 38, 38)"
+											strokeWidth={2}
+											strokeDasharray="3 3"
+										/>
+									))}
 							</LineChart>
 						</ResponsiveContainer>
 					</div>
-					<div className="flex flex-wrap gap-2 mt-4 text-sm">
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-indigo-500" />
-							<span>Measured Value</span>
+					<div className="flex flex-wrap gap-2 mt-4">
+						<div className="flex items-center">
+							<div className="w-3 h-3 rounded-full bg-indigo-500 mr-1"></div>
+							<span className="text-xs">Normal Value</span>
 						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-green-500" />
-							<span>Posterior Mean</span>
+						<div className="flex items-center">
+							<div className="w-3 h-3 rounded-full bg-amber-500 mr-1"></div>
+							<span className="text-xs">Measurement Error</span>
 						</div>
-						<div className="flex items-center gap-1 text-red-500">
-							<AlertTriangle className="h-4 w-4" />
-							<span>Spec Limits</span>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			<Card className="mb-6">
-				<CardHeader>
-					<CardTitle>Measurement Distribution Over Time</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="h-64">
-						<Plot
-							data={getCandlestickData(data)}
-							layout={{
-								xaxis: {
-									type: "category",
-									rangeslider: {visible: false},
-								},
-								yaxis: {title: "Value"},
-								shapes: [
-									// Lower spec limit
-									{
-										type: "line",
-										x0: -0.5,
-										x1: data.length - 0.5,
-										y0: settings.specLower,
-										y1: settings.specLower,
-										line: {
-											color: "#dc2626",
-											width: 1,
-											dash: "dash",
-										},
-									},
-									// Upper spec limit
-									{
-										type: "line",
-										x0: -0.5,
-										x1: data.length - 0.5,
-										y0: settings.specUpper,
-										y1: settings.specUpper,
-										line: {
-											color: "#dc2626",
-											width: 1,
-											dash: "dash",
-										},
-									},
-								],
-								showlegend: true,
-								legend: {
-									x: 0,
-									y: 1,
-									orientation: "h",
-								},
-								margin: {t: 10, r: 10, b: 30, l: 60},
-								height: 256,
-							}}
-							useResizeHandler={true}
-							style={{width: "100%", height: "100%"}}
-						/>
-					</div>
-					<div className="flex flex-wrap gap-2 mt-4 text-sm">
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-indigo-500" />
-							<span>Measured Value</span>
-						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 rounded-full bg-green-500" />
-							<span>Posterior Mean</span>
-						</div>
-						<div className="flex items-center gap-1">
-							<div className="w-3 h-3 bg-green-500 opacity-30" />
-							<span>±2σ Range</span>
-						</div>
-						<div className="flex items-center gap-1 text-red-500">
-							<AlertTriangle className="h-4 w-4" />
-							<span>Spec Limits</span>
+						<div className="flex items-center">
+							<div className="w-3 h-3 border-2 border-dashed border-red-500 mr-1"></div>
+							<span className="text-xs">Item Error</span>
 						</div>
 					</div>
 				</CardContent>
 			</Card>
 
-			{/* Measurement Log Table */}
+			{/* Measurements Table */}
 			<Card>
 				<CardHeader>
-					<CardTitle>
-						Recent Measurements (Last {settings.timeWindow}s)
-					</CardTitle>
+					<CardTitle>Measurement Log</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="rounded-md border">
@@ -821,71 +716,74 @@ export default function BayesianNoDriftSimulation() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>ID</TableHead>
-									<TableHead>Time</TableHead>
-									<TableHead>True Y</TableHead>
-									<TableHead>Prod Error?</TableHead>
-									<TableHead>Measured X</TableHead>
-									<TableHead>Measure Error?</TableHead>
-									<TableHead>Posterior Mean</TableHead>
-									<TableHead>P(In Spec)</TableHead>
+									<TableHead>Timestamp</TableHead>
+									<TableHead>Item</TableHead>
 									<TableHead>Status</TableHead>
+									<TableHead className="text-right">Value</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{data.length === 0 ? (
+								{measurements.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={9}
+											colSpan={5}
 											className="text-center text-muted-foreground"
 										>
-											No data yet. Start the simulation.
+											No measurements yet. Start the simulation to generate
+											data.
 										</TableCell>
 									</TableRow>
 								) : (
-									[...data]
+									measurements
+										.slice()
 										.reverse()
 										.slice(0, 10)
-										.map((m) => (
-											<TableRow key={m.id}>
-												<TableCell>{m.id}</TableCell>
-												<TableCell>{formatTime(m.timestamp)}</TableCell>
-												<TableCell className="font-mono text-right">
-													{m.trueY.toFixed(2)}
-												</TableCell>
+										.map((measurement) => (
+											<TableRow
+												key={measurement.id}
+												className={!measurement.isValid ? "bg-red-50" : ""}
+											>
+												<TableCell>{measurement.id}</TableCell>
 												<TableCell>
-													{m.hasProductionError ? (
-														<Badge variant="destructive">Yes</Badge>
-													) : (
-														<Badge variant="outline">No</Badge>
-													)}
+													{formatDate(measurement.timestamp)}
 												</TableCell>
-												<TableCell className="font-mono text-right">
-													{m.measuredX.toFixed(2)}
-												</TableCell>
+												<TableCell>{measurement.item}</TableCell>
 												<TableCell>
-													{m.hasMeasurementError ? (
+													{!measurement.isValid ? (
 														<Badge
 															variant="destructive"
-															className="bg-amber-100 text-amber-800"
+															className="flex items-center gap-1"
 														>
-															Yes
+															<AlertTriangle className="h-3 w-3" />
+															Item Error
+														</Badge>
+													) : measurement.hasMeasurementError ? (
+														<Badge
+															variant="destructive"
+															className="flex items-center gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100"
+														>
+															<AlertCircle className="h-3 w-3" />
+															Measurement Error
 														</Badge>
 													) : (
-														<Badge variant="outline">No</Badge>
+														<Badge
+															variant="outline"
+															className="bg-green-100 text-green-800 hover:bg-green-100"
+														>
+															Valid
+														</Badge>
 													)}
 												</TableCell>
-												<TableCell className="font-mono text-right">
-													{m.postMean.toFixed(2)} ± {m.postStd.toFixed(2)}
-												</TableCell>
-												<TableCell className="font-mono text-right">
-													{m.pInSpec.toFixed(3)}
-												</TableCell>
-												<TableCell>
-													{m.flagged ? (
-														<Badge variant="destructive">Out of Spec</Badge>
-													) : (
-														<Badge variant="outline">OK</Badge>
-													)}
+												<TableCell
+													className={`text-right font-mono ${
+														measurement.hasMeasurementError
+															? "text-amber-600 font-bold"
+															: ""
+													}`}
+												>
+													{measurement.isValid
+														? measurement.value.toFixed(2)
+														: "N/A"}
 												</TableCell>
 											</TableRow>
 										))
@@ -893,9 +791,9 @@ export default function BayesianNoDriftSimulation() {
 							</TableBody>
 						</Table>
 					</div>
-					{data.length > 10 && (
+					{measurements.length > 10 && (
 						<p className="text-sm text-muted-foreground mt-2">
-							Showing last 10 of {data.length} measurements
+							Showing 10 of {measurements.length} measurements
 						</p>
 					)}
 				</CardContent>
