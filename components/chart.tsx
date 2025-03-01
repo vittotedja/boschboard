@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import {fetchAll} from "@/lib/db";
 import {PlotData, Shape} from "plotly.js";
 
-type Timeframe = "tick" | "1m" | "5m" | "1h" | "1d";
+type Timeframe = "1m" | "5m" | "1h" | "1d" | "1M" | "tick"; // Added '1M' for "1 month"
 
 // Only use dynamic import, remove the direct import
 const Plot = dynamic(
