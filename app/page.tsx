@@ -1,4 +1,5 @@
 import Image from "next/image";
+import AskForm from '@/components/AskForm';
 
 export default function Home() {
   return (
@@ -6,6 +7,8 @@ export default function Home() {
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
 
       </main>
+      <h1 className="text-3xl font-bold mb-8">Calibration Assistant</h1>
+      <AskForm />
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
