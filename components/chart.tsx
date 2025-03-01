@@ -280,7 +280,7 @@ const TimeSeriesChart: React.FC = () => {
 								mode: "lines",
 								line: {
 									color: "rgba(100, 100, 100, 0.8)",
-									// dash: "dot",
+									dash: "dot",
 									width: 1,
 								},
 								name: "Average",
