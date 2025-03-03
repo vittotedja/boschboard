@@ -3,8 +3,8 @@
 import {
 	Bar,
 	BarChart,
-	Line,
-	LineChart,
+	// Line,
+	// LineChart,
 	ResponsiveContainer,
 	XAxis,
 	YAxis,
@@ -31,6 +31,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import ErrorTrendGraph from "@/components/error-trend-graph";
 
 // Sample data - replace with real data from your database
 const calibrationData = [
@@ -42,14 +43,14 @@ const calibrationData = [
 	{month: "Jun", count: 45},
 ];
 
-const errorTrendData = [
-	{month: "Jan", error: 0.12},
-	{month: "Feb", error: 0.08},
-	{month: "Mar", error: 0.15},
-	{month: "Apr", error: 0.11},
-	{month: "May", error: 0.09},
-	{month: "Jun", error: 0.14},
-];
+// const errorTrendData = [
+// 	{month: "Jan", error: 0.12},
+// 	{month: "Feb", error: 0.08},
+// 	{month: "Mar", error: 0.15},
+// 	{month: "Apr", error: 0.11},
+// 	{month: "May", error: 0.09},
+// 	{month: "Jun", error: 0.14},
+// ];
 
 const upcomingCalibrations = [
 	{
@@ -140,7 +141,10 @@ export default function CalibrationDashboard() {
 			</div>
 
 			{/* Charts */}
-			<div className="grid gap-4 md:grid-cols-2">
+			<div className="grid gap-4">
+				<ErrorTrendGraph />
+			</div>
+			<div className="grid gap-4">
 				<Card className="border-sky-250">
 					<CardHeader>
 						<CardTitle className="text-sky-950">Calibration Activity</CardTitle>
@@ -157,28 +161,6 @@ export default function CalibrationDashboard() {
 									radius={[4, 4, 0, 0]}
 								/>
 							</BarChart>
-						</ResponsiveContainer>
-					</CardContent>
-				</Card>
-				<Card className="border-sky-250">
-					<CardHeader>
-						<CardTitle className="text-sky-950">Error Trend</CardTitle>
-						<CardDescription>
-							Average calibration error over time
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<ResponsiveContainer width="100%" height={300}>
-							<LineChart data={errorTrendData}>
-								<XAxis dataKey="month" />
-								<YAxis />
-								<Line
-									type="monotone"
-									dataKey="error"
-									stroke="hsl(0 72% 51%)"
-									strokeWidth={2}
-								/>
-							</LineChart>
 						</ResponsiveContainer>
 					</CardContent>
 				</Card>
