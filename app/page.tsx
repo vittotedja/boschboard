@@ -43,15 +43,6 @@ const calibrationData = [
 	{month: "Jun", count: 45},
 ];
 
-// const errorTrendData = [
-// 	{month: "Jan", error: 0.12},
-// 	{month: "Feb", error: 0.08},
-// 	{month: "Mar", error: 0.15},
-// 	{month: "Apr", error: 0.11},
-// 	{month: "May", error: 0.09},
-// 	{month: "Jun", error: 0.14},
-// ];
-
 const upcomingCalibrations = [
 	{
 		tool_desc: "Precision Caliper A",

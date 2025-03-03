@@ -61,15 +61,18 @@ const fetchErrorData = async (): Promise<ErrorData[]> => {
 const predictNextError = async (
 	previousData: ErrorData[]
 ): Promise<ErrorData> => {
-	const response = await fetch("http://localhost:8000/predict", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			features: previousData.map((d) => d.value),
-		}),
-	});
+	const response = await fetch(
+		"https://web-dxupze9t2hv7.up-de-fra1-k8s-1.apps.run-on-seenode.com/predict",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				features: previousData.map((d) => d.value),
+			}),
+		}
+	);
 
 	const data = await response.json();
 
